@@ -1,3 +1,16 @@
+# 20250509-sample\_\_nextjs-VercelAI-LangChainjs
+
+以下が必要
+
+```env
+# /.env.local
+
+# OpenAI API キー
+OPENAI_API_KEY="your key"
+```
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
