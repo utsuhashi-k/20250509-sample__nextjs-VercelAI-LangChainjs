@@ -22,11 +22,61 @@ export default function Home() {
         body: JSON.stringify({ prompt }),
       })
 
-      const data = await res.json()
-      setResponse(data.result || data.error)
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.error || "APIエラーが発生しました")
+      }
+
+      // ストリームの読み取り
+      const reader = res.body?.getReader()
+      if (!reader) {
+        throw new Error("レスポンスボディを読み取れませんでした")
+      }
+
+      // テキストデコーダーの作成
+      const decoder = new TextDecoder()
+      let responseText = ""
+
+      // ストリームからデータを読み取る
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        // バイナリデータをテキストに変換
+        const chunk = decoder.decode(value, { stream: true })
+
+        // Server-Sent Events (SSE) の形式を解析
+        const lines = chunk.split("\n\n")
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.substring(6)
+
+            // 完了メッセージの確認
+            if (data === "[DONE]") {
+              setLoading(false)
+              continue
+            }
+
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.token) {
+                responseText += parsed.token
+                setResponse(responseText)
+              } else if (parsed.error) {
+                throw new Error(parsed.error)
+              }
+            } catch (e) {
+              // JSONパースエラーは無視（不完全なチャンクの場合）
+              if (!(e instanceof SyntaxError)) {
+                throw e
+              }
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error("エラーが発生しました:", error)
-      setResponse("リクエストの処理中にエラーが発生しました")
+      setResponse(`エラー: ${error instanceof Error ? error.message : "不明なエラー"}`)
     } finally {
       setLoading(false)
     }
